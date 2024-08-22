@@ -27,7 +27,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: btdevopsacr.azurecr.io/backend:latest
+          image: bnt2408acr.azurecr.io/backend:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
