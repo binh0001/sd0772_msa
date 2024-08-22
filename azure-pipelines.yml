@@ -1,0 +1,61 @@
+trigger:
+  branches:
+    include:
+      - main
+
+variables:
+  - group: "sd0772-msa-var"
+
+# Pool build
+pool:
+  vmImage: "ubuntu-latest"
+
+stages:
+  - stage: Build
+    jobs:
+      - job: Docker_Build_and_Push_Image
+        steps:
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
+              inlineScript: |
+                az acr login --name $(acrName)
+
+                # Build Docker image for frontend
+                cd $(System.DefaultWorkingDirectory)/src/$(imageFrontend)
+                docker build -t $(acrName).azurecr.io/$(imageFrontend):$(tag) .
+                docker push $(acrName).azurecr.io/$(imageFrontend):$(tag)
+
+                # Build Docker image for backend
+                cd $(System.DefaultWorkingDirectory)/src/$(imageBackend)
+                docker build -t $(acrName).azurecr.io/$(imageBackend):$(tag) .
+                docker push $(acrName).azurecr.io/$(imageBackend):$(tag)
+
+              addSpnToEnvironment: true
+
+          - script: |
+              echo "Images pushed to ACR:"
+              echo "$(acrName).azurecr.io/$(imageFrontend):$(tag)"
+              echo "$(acrName).azurecr.io/$(imageBackend):$(tag)"
+            displayName: "Show Image Info"
+  - stage: Deploy
+    jobs:
+      - job: Deploy_to_AKS
+        steps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: "3.x"
+              addToPath: true
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
+              inlineScript: |
+                az aks get-credentials --resource-group $(resourceGroupName) --name $(aksClusterName)
+                kubectl config set-context --current --namespace $(aksNamespace)
+                kubectl apply -f $(System.DefaultWorkingDirectory)/k8s/az/mongodb.yaml
+                kubectl apply -f $(System.DefaultWorkingDirectory)/k8s/az/backend.yaml
+                kubectl apply -f $(System.DefaultWorkingDirectory)/k8s/az/frontend.yaml
