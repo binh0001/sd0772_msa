@@ -37,7 +37,7 @@ pipeline {
             agent any
             steps {
                 withAWS(region: 'ap-southeast-2', credentials: 'aws-credential') {
-                    sh "aws eks update-kubeconfig --name sd1121-devops-eks"
+                    sh "aws eks update-kubeconfig --name sd0772-devops-eks"
                     sh "kubectl apply -f k8s/aws/mongodb.yaml"
                     sh "kubectl apply -f k8s/aws/backend.yaml"
                     sh "kubectl apply -f k8s/aws/frontend.yaml"
